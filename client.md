@@ -6,8 +6,8 @@
 # -ADMIN SYSTEM-
 str k = "";
 str r = "";
-str[] banLs = str[];
-str[] muteLs = str[];
+str[] bnLs = str[];
+str[] mtLs = str[];
 str[] vipLs = str[];
 str[] plrLs = str[];
 str[] adminLs = str[];
@@ -97,31 +97,71 @@ action selAdBtn(str id) {
 #left panel
 
 # right panel
+
 str adSelRyt = "";
 str adSelRytBrd = "3px solid rgba(255,255,255,1)";
 str[] wepBtnIDs = str[];
 str[] wepNm = str[];
 str adSelWep = "";
 
-action selAdRyt(str id, str act) {
- if (adSelRyt != "") {updDIV(adSelRyt,"border",norBrd);}
- if (adSelWep != "") {updDIV(adSelWep,"border",norBrd);adSelWep = "";}
+action clrAdRytSel() {
+ if (adSelRyt != "") {
+  updDIV(adSelRyt,"border",norBrd);
+
+  if (adSelRyt == "mkAdRytBan") {
+   updDIVTxt(adSelRyt,"BAN");
+  }
+ }
+
+ adSelRyt = "";
+}
+
+action selAdRyt(str id,str act,str lbl) {
+ if (adSelRyt != "") {
+  updDIV(adSelRyt,"border",norBrd);
+
+  if (adSelRyt == "mkAdRytBan") {updDIVTxt(adSelRyt,"BAN");}
+  if (adSelRyt == "mkAdRytMuteAction" || adSelRyt == "mkAdRytBanAction") {updDIVTxt(adSelRyt,"REMOVE");}
+ }
+
+ if (adSelWep != "") {
+  updDIV(adSelWep,"border",norBrd);
+  adSelWep = "";
+ }
+
+ if (id == "mkAdRytBan" || id == "mkAdRytMuteAction" || id == "mkAdRytBanAction") {
+  if (adSelRyt == id) {
+   netSd(act,{sI:k,tU:adSelPlr});
+   updDIVTxt(id,lbl);
+   adSelRyt = "";
+   return;
+  }
+
+  updDIV(id,"border",adSelRytBrd);
+  updDIVTxt(id,"CONFIRM?");
+  adSelRyt = id;
+  return;
+ }
+
  updDIV(id,"border",adSelRytBrd);
  adSelRyt = id;
  netSd(act,{sI:k,tU:adSelPlr});
 }
 
 action procAdRytAct(str id) {
- if (id == "mkAdRytKick") {selAdRyt(id,"kc");return;}
- if (id == "mkAdRytBan") {selAdRyt(id,"bn");return;}
- if (id == "mkAdRytMute") {selAdRyt(id,"mt");return;}
- if (id == "mkAdRytRevive") {selAdRyt(id,"rv");return;}
- if (id == "mkAdRytGoTo") {selAdRyt(id,"gt");return;}
- if (id == "mkAdRytBring") {selAdRyt(id,"bm");return;}
- if (id == "mkAdRytPts100") {selAdRyt(id,"1h");return;}
- if (id == "mkAdRytPts1000") {selAdRyt(id,"1t");return;}
- if (id == "mkAdRytTempAd") {selAdRyt(id,"ta");return;}
- if (id == "mkAdRytTempRo") {selAdRyt(id,"tr");return;}
+ if (id == "mkAdRytKick") {selAdRyt(id,"kc","KICK");return;}
+ if (id == "mkAdRytBan") {selAdRyt(id,"bn","BAN");return;}
+ if (id == "mkAdRytMute") {selAdRyt(id,"mt","MUTE");return;}
+ if (id == "mkAdRytRevive") {selAdRyt(id,"rv","REVIVE");return;}
+ if (id == "mkAdRytGoTo") {selAdRyt(id,"gt","GO TO");return;}
+ if (id == "mkAdRytBring") {selAdRyt(id,"bm","BRING ME");return;}
+ if (id == "mkAdRytPts100") {selAdRyt(id,"1h","+100pts");return;}
+ if (id == "mkAdRytPts1000") {selAdRyt(id,"1t","+1000pts");return;}
+ if (id == "mkAdRytTempAd") {selAdRyt(id,"ta","TEMP ADMIN");return;}
+ if (id == "mkAdRytTempRo") {selAdRyt(id,"tr","TEMP ROOT");return;}
+
+ if (id == "mkAdRytMuteAction") {selAdRyt(id,"rM","REMOVE");return;}
+ if (id == "mkAdRytBanAction") {selAdRyt(id,"rB","REMOVE");return;}
 }
 
 action selAdWep(str id, str name) {
@@ -354,7 +394,7 @@ action updAdList(str[] data, str prefix) {
   }
  }
 }
-bool action procAdListAct(str id, str[] data, str prefix) {
+bool action procAdListAct(str id,str[] data,str prefix) {
  for (num i = 0; i < lengthOf data; i++) {
   if (id == "mkAdAction_" + prefix + "_" + toStr(i)) {
    if (adSelPlr != "") {
@@ -368,13 +408,15 @@ bool action procAdListAct(str id, str[] data, str prefix) {
     }
    }
 
+   clrAdRytSel();
+
    adSelPlr = data[i];
 
    updDIV("mkAdRow_" + prefix + "_" + toStr(i),"border",adSelRowBrd);
    updDIV("mkAdRow_" + prefix + "_" + toStr(i),"background",adSelRowBg);
    updDIV("mkAdAction_" + prefix + "_" + toStr(i),"background","rgba(255,255,255,1)");
 
-   updAdRytPlr(adSelPlr, prefix);
+   updAdRytPlr(adSelPlr,prefix);
    return true;
   }
  }
@@ -389,16 +431,16 @@ action procDtRec(str id,obj data) {
  str prefix = "";
 
  if (id=="plL") {ls=plrLs;prefix="pl";}
- else if (id=="mtL") {ls=muteLs;prefix="mt";}
- else if (id=="bnL") {ls=banLs;prefix="bn";}
+ else if (id=="mtL") {ls=mtLs;prefix="mt";}
+ else if (id=="bnL") {ls=bnLs;prefix="bn";}
  else {return;}
 
  if ((str)data.d!="") {
   ls=(str[])data.d;
 
   if (id=="plL") {plrLs=ls;}
-  if (id=="mtL") {muteLs=ls;}
-  if (id=="bnL") {banLs=ls;}
+  if (id=="mtL") {mtLs=ls;}
+  if (id=="bnL") {bnLs=ls;}
  }
  updAdList(ls,prefix);
 }
@@ -406,6 +448,8 @@ action procDtRec(str id,obj data) {
 action procPlrUpd(str id, obj data) {
  str pNm = (str)data.n;
  if (id == "plA") {addTo plrLs pNm;}
+ if (id == "bnA") {addTo mtLs pNm;}
+ if (id == "mtA") {addTo bnLs pNm;}
  if (id == "plD") {
   for (num i = lengthOf plrLs - 1; i >= 0; i--) {
    if (plrLs[i] == pNm) {remove plrLs[i];break;}
@@ -454,8 +498,19 @@ action clrAdSel() {
   updDIV(adSelBtn,"background",btnBg);
  }
 
+ if (adSelRyt != "") {
+  updDIV(adSelRyt,"border",norBrd);
+  if (adSelRyt == "mkAdRytBan") {updDIVTxt(adSelRyt,"BAN");}
+ }
+
+ if (adSelWep != "") {
+  updDIV(adSelWep,"border",norBrd);
+ }
+
  adSelBtn = "";
  adSelPlr = "";
+ adSelRyt = "";
+ adSelWep = "";
 
  clrAdCen();
  clrAdRyt();
@@ -564,8 +619,8 @@ if (id == "mkAdCls") {clsAdPnl();return;}
 if (id == "mkAdExt") {clsAdPnl();return;}
 if (id == "mkAdRytAvatar" || id == "mkAdRytName") {GAME.UTILS.copyToClipboard(adSelPlr);return;}
 if (procAdListAct(id,plrLs,"pl")) {return;}
-if (procAdListAct(id,muteLs,"mt")) {return;}
-if (procAdListAct(id,banLs,"bn")) {return;}
+if (procAdListAct(id,mtLs,"mt")) {return;}
+if (procAdListAct(id,bnLs,"bn")) {return;}
 
 if (id == "mkAdBtnPlrs") {selAdBtn(id);adSelLst="pl";adSelPlr="";clrAdRyt();netSd("bPl",{sI:k,r:"rq"});return;}
 if (id == "mkAdBtnMt") {selAdBtn(id);adSelLst="mt";adSelPlr="";clrAdRyt();netSd("bMt",{sI:k,r:"rq"});return;}
@@ -586,5 +641,6 @@ public action onNetworkMessage(str id, obj data) {
  if (id=="aUI") {assgAdUI(data);}
  if (id == "lS") {logS(data);}
  if (id == "plA" || id == "plD") {procPlrUpd(id,data);return;}
+ if (id == "bnA"|| id == "mtA") {procPlrUpd(id,data);return;}
  procDtRec(id, data);
 }

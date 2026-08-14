@@ -2,9 +2,9 @@
 # KrunkScript Copyright (C) FRVR Limited
 # 
 # Add custom actions here
-
-str[] admin = str["Sunnypatni112","ATL.06","stum2013020399","King_Bytel","Chen_Yu_1","ALG_VINIT"];
+str[] head = str["timeAndtime"];
 str[] root = str["slanik","Miekie","timeAndtime","Sumiji","archuselinux","superguy68","Guardian_1"];
+str[] admin = str["Sunnypatni112","ATL.06","stum2013020399","King_Bytel","Chen_Yu_1","ALG_VINIT"];
 str[] tmpAd = str[];
 str[] tmpRo = str[];
 str[] protAcc = str["Miekie"];
@@ -79,13 +79,23 @@ action logR(str tag,str msg,str cl) {
 str[] plrLs = str[];
 str[] plrLsID = str[];
 
-action syncPlrLs(str id) {
+action syncPlrLs(str type,str id) {
  obj p=fnByID(id);
  if (!notEmpty p) {return;}
- str pId=(str)p.id;str pNm=(str)p.username;
- for (num i=0;i<lengthOf plrLsID;i++) {if (plrLsID[i]==pId) {return;}}
- addTo plrLs pNm;addTo plrLsID pId;
- for (num j=0;j<lengthOf adSess;j++) {netSd("plA",{n:pNm},(str)adSess[j].id);}
+ str pId=(str)p.id;str pAc=(str)p.accountName;
+ if (pAc=="") {pAc=(str)p.username;}
+ if (type=="pl") {
+  for (num i=0;i<lengthOf plrLsID;i++) {if (plrLsID[i]==pId) {return;}}
+  addTo plrLs pAc;addTo plrLsID pId;
+ }
+
+ for (num j=0;j<lengthOf adSess;j++) {
+  if (type=="pl") {netSd("plA",{n:pAc},(str)adSess[j].id);}
+  if (type=="bn") {netSd("bnA",{n:pAc},(str)adSess[j].id);}
+  if (type=="mt") {netSd("mtA",{n:pAc},(str)adSess[j].id);}
+  if (type=="ta") {netSd("taA",{n:pAc},(str)adSess[j].id);}
+  if (type=="tr") {netSd("trA",{n:pAc},(str)adSess[j].id);}
+ }
 }
 
 action syncPlrRm(str id) {
@@ -346,8 +356,8 @@ num action validAdPkt(str id, obj data, obj p) {
  str[] btn = str["bPl","bBn","bMt"];
  if (inList(btn,id)) {return 1;}
 
- if ((str)data.tU == "" || (str)data.w == "") {return 0;}
- str[] act=str["kc","bn","mt","rv","gt","bm","1h","1t","ta","tr","aW"];
+ if ((str)data.tU == "" && (str)data.w == "") {return 0;}
+ str[] act=str["kc","bn","mt","rv","gt","bm","1h","1t","ta","tr","aW", "rM", "rB"];
  if (inList(act,id)) {return 2;}
  logR("WRNG",(str)p.accountName+" sent invalid network request: "+id,wrng);
  return 0;
@@ -396,6 +406,21 @@ action rmDtRq(str pId) {
 # data request
 
 # action security
+
+action adTpPlr(str id,obj a,obj t,str aAcc,str tAcc) {
+ if (id == "gt") {
+  a.position.x = t.position.x;
+  a.position.y = t.position.y;
+  a.position.z = t.position.z;
+ }
+ else {
+  t.position.x = a.position.x;
+  t.position.y = a.position.y;
+  t.position.z = a.position.z; 
+ }
+ logR("ACT",aAcc+" granted "+(id == "gt" ? "GO TO " : "BRING ME ")+tAcc,info);
+}
+
 action grantTmpRole(str role, str sAcc, str tAcc, str trg) {
  if (isAuthorized(tAcc)) {logR("ACT",tAcc+" is already an Admin",info);return;}
  if (!inStrLs(role == "ta" ? tmpAd : tmpRo,tAcc)) {addTo (role == "ta" ? tmpAd : tmpRo) tAcc;}
@@ -405,7 +430,6 @@ action grantTmpRole(str role, str sAcc, str tAcc, str trg) {
 action setPlrTeam(obj t) {
  addTo svPlrLoc {id: (str)t.id,x: (num)t.position.x,y: (num)t.position.y,z: (num)t.position.z,at: GAME.TIME.now() + 500};
  t.position.x = rnX;t.position.y = rnY;t.position.z = rnZ;
-
 }
 
 num action getWepID(str n) {
@@ -422,54 +446,52 @@ num action getWepID(str n) {
  return -1;
 }
 
-action giveWep(obj p, str a, str n, str t) {
- num id=getWepID(n);
- if (id>=0) {p.giveWeapon(id);}
- logR("WEP",a+" req "+n+" for "+t,info);
-}
+action giveWep(obj p, str a, str n, str t) {num id=getWepID(n);if (id>=0) {p.giveWeapon(id);}logR("WEP",a+" req "+n+" for "+t,info);}
 
 action procAdAct(str id, obj data, str pID) {
  str sId = (str)data.sI; # admin's sess id
  str sdr = pID; # sender's id
  if (!verAd(sdr, sId)) {return;}
 
- str tUsr = (str)data.tU; # target's usrname
- str trg = ""; # target's uid
+ str tUsr = (str)data.tU;
+ str tID = ""; # target's id
+ str pAcc = "";
  obj[] plr = allPlr();
- for (num i = 0; i < lengthOf plr; i ++) {
-  if ((str)plr[i].username == tUsr) {
-   trg = (str)plr[i].id; 
-   if (trg=="") {return;}break;}
+ for (num i = 0; i < lengthOf plr; i++) {
+  pAcc = (str)plr[i].accountName;
+  if (pAcc == "") {pAcc = (str)plr[i].username;}
+  if (pAcc == tUsr) {
+   tID = (str)plr[i].id;
+   break;
+  }
  }
+ if (tID == "") {return;}
  
- obj s = fnByID(sdr);obj t = fnByID(trg);
- if (!notEmpty s || !notEmpty t) {return;}
- str sAcc = (str)s.accountName;str tAcc = (str)t.accountName;
+ obj a = fnByID(pID);obj t = fnByID(tID);
+ if (!notEmpty a || !notEmpty t) {return;}
+ str aAcc = (str)a.accountName;str tAcc = (str)t.accountName;
  if (tAcc == "") {tAcc = (str)t.username;}
 
- if (id == "aW") {giveWep(t, sAcc, (str)data.w, tAcc); return;}
- if (id == "rv") {setPlrTeam(t);logR("ACT",sAcc+" req REVIVE for "+tAcc,info);return;}
-
- if (id == "gt"){logR("ACT",sAcc+" req GO TO for "+tAcc,info);return;}
- if (id == "bm"){logR("ACT",sAcc+" req BRING ME for "+tAcc,info);return;}
-
- if (id == "1h") {(num)t.score += 100;logR("ACT",sAcc+" req +100pts for "+tAcc,info);return;}
- if (id == "1t") {(num)t.score += 1000;logR("ACT",sAcc+" req +1000pts for "+tAcc,info);return;}
- if (id == "ta") {grantTmpRole("ta",sAcc,tAcc,trg);return;}
- if (id == "tr") {grantTmpRole("tr",sAcc,tAcc,trg);return;}
-
- if (!procActPerm(sAcc,id,tAcc)) {return;}
+ if (id == "aW") {giveWep(t, aAcc, (str)data.w, tAcc); return;}
+ if (id == "rv") {setPlrTeam(t);logR("ACT",aAcc+" req REVIVE for "+tAcc,info);return;}
+ if (id == "gt"||id == "bm"){adTpPlr(id, a, t, aAcc, tAcc);return;}
+ if (id == "1h") {(num)t.score += 100;logR("ACT",aAcc+" req +100pts for "+tAcc,info);return;}
+ if (id == "1t") {(num)t.score += 1000;logR("ACT",aAcc+" req +1000pts for "+tAcc,info);return;}
+ if (id == "ta"||id == "tr") {grantTmpRole(id,aAcc,tAcc,tID);return;}
+ if (id == "rM") {GAME.log("WORKING");return;} #logR("ACT",aAcc+" REMOVED "+tAcc+" from AUTO "+(id == "rM" ? "MUTE" : "BAN"),info);
+ if (id == "rN") {GAME.log("WORKING");return;} #logR("ACT",aAcc+" REMOVED "+tAcc+" from AUTO "+(id == "rM" ? "MUTE" : "BAN"),info);
+ if (!procActPerm(aAcc,id,tAcc)) {return;}
  str lc = ""; str act = "";
  if (id == "kc") {
-  GAME.ADMIN.kick(trg);lc="#a83841";act="kicked";
+  GAME.ADMIN.kick(tID);lc="#a83841";act="kicked";
  }
  if (id == "bn") {
-  addTo banLs tAcc; GAME.ADMIN.ban(tAcc);lc="#991d24";act="banned";
+  addTo banLs tAcc; syncPlrLs(id, tID); GAME.ADMIN.ban(tID);lc="#991d24";act="banned";
  }
  if (id == "mt") {
-	
+  addTo mtLs tAcc; syncPlrLs(id, tID);
  }
- logR("INFO",sAcc+" GRANTED "+id+" on "+tAcc,info);
+ logR("INFO",aAcc+" GRANTED "+id+" on "+tAcc,info);
 }
 # action security
 
@@ -497,7 +519,7 @@ public action onPlayerSpawn(str id) {
  obj p = fnByID(id);
  if (!notEmpty p) {return;}
  # if (!isAdmin((str)p.accountName)) {GAME.ADMIN.ban(id);}
- syncPlrLs(id);
+ syncPlrLs("pl",id);
  admAuth(id);
  procBan(id);
 }
@@ -540,12 +562,9 @@ public action onNetworkMessage(str id, obj data, str pID) {
  }
  num vld = validAdPkt(id, data, p);
  if (vld == 0) {return;}
- logR("NET",(str)p.accountName+" sent REQ to server","");
+ logR("NET",(str)p.accountName+" sent REQ to server: "+id,"");
  if (vld == 1 && (str)data.r == "rq") {procDtReq(id, data, pID);}
  if (vld == 2) {procAdAct(id, data, pID);}
- if (vld >= 5) {
- # alert super admins but do not remove session id for live server investigation
- }
 }
 
 # Server receives chat message
