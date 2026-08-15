@@ -9,8 +9,8 @@ str[] tmpAd = str[];
 str[] tmpRo = str[];
 str[] protAcc = str["Miekie"];
 
-str[] btnIDs=str["mkAdBtnPlrs","mkAdBtnMt","mkAdBtnBn","mkAdBtnAd","mkAdBtnCon","mkAdBtnOth"];
-str[] btnLbls=str["PLAYERS","MUTE","BAN","ADMINS","CONTROLS","OTHERS"];
+str[] btnIDs=str["mkAdBtnPlrs","mkAdBtnMt","mkAdBtnBn","mkAdBtnTAd", "mkAdBtnTRo","mkAdBtnCon","mkAdBtnOth"];
+str[] btnLbls=str["PLAYERS","MUTE","BAN","TEMP ADMIN", "TEMP ROOT","CONTROLS","OTHERS"];
 str[] toolIDs=str["mkAdRytKick","mkAdRytBan","mkAdRytRevive","mkAdRytMute","mkAdRytGoTo","mkAdRytBring","mkAdRytPts100","mkAdRytPts1000","mkAdRytTempAd","mkAdRytTempRo"];
 str[] toolLbls=str["KICK","BAN","REVIVE","MUTE","GO TO","BRING ME","+100pts","+1000pts","TEMP ADMIN","TEMP ROOT"];
 str[] lmgs=str["MACHINE GUN","MINIGUN (n/a)"];
@@ -22,11 +22,17 @@ str[] shotguns=str["SHOTGUN","BLASTER","SAWED OFF"];
 str[] special=str["SLIMER (n/a)","CHARGE RIFLE","CROSSBOW","COMBAT KNIFE","BOULDER","ZAPPER","COMPRESSOR"];
 str[] tools=str["GRAPPLER","BUILD TOOL (n/a)"];
 
+str[] btn = str["bPl","bBn","bMt", "bTAd", "bTRo"];
+str[] act=str["kc","bn","mt","rv","gt","bm","1h","1t","ta","tr","aW"];
+str[] rmAct=str["","rM","rB","rTA","rTR"];
+
+str action fnLbl(str[] src,str lbl,str[] trg) {for (num i = 0; i < lengthOf src; i++) {if (src[i]==lbl) {return trg[i];}}return "";}
+
 # - ADMIN PERMISSIONS - 
 num[] adBtn=num[0]; # admin & tmp root/admin 
 num[] adTool=num[0,1,4,5,3]; # admin & tmp admin
 
-num[] rtBtn=num[0,1,2,3,4,5]; # root only
+num[] rtBtn=num[0,1,2,3,4,5, 6]; # root only
 num[] rtTool=num[0,1,2,3,4,5,6,7,8,9]; # roott & tmp root
 
 num[] lmgi=num[6,25];
@@ -62,11 +68,10 @@ bool action hasRoot(str acc) {return isRoot(acc) || isTmpRoot(acc);}
 bool action isAdmin(str acc) {return inStrLs(admin, acc) || inStrLs(tmpAd, acc);}
 bool action isAuthorized(str acc) {return inStrLs(admin, acc) || inStrLs(tmpAd, acc) || hasRoot(acc);}
 bool action isProtAcc(str acc) {return inStrLs(protAcc, acc);}
-
+action rmFrStrLs(str[] arr, str acc) {for(num i = 0; i < lengthOf arr; i++) {if (arr[i] == acc) {remove arr[i];return;}}}
 action netSd(str id, obj d, str pId) {GAME.NETWORK.send(id, d, pId);}
 action netBc(str id, obj d) {GAME.NETWORK.broadcast(id, d);}
 
-# C-style %s string formatter
 action logR(str tag,str msg,str cl) {
  str[] chIgnr = str["NET", "REQ"];
  str t = "["+tag+"] ";
@@ -78,36 +83,6 @@ action logR(str tag,str msg,str cl) {
 
 str[] plrLs = str[];
 str[] plrLsID = str[];
-
-action syncPlrLs(str type,str id) {
- obj p=fnByID(id);
- if (!notEmpty p) {return;}
- str pId=(str)p.id;str pAc=(str)p.accountName;
- if (pAc=="") {pAc=(str)p.username;}
- if (type=="pl") {
-  for (num i=0;i<lengthOf plrLsID;i++) {if (plrLsID[i]==pId) {return;}}
-  addTo plrLs pAc;addTo plrLsID pId;
- }
-
- for (num j=0;j<lengthOf adSess;j++) {
-  if (type=="pl") {netSd("plA",{n:pAc},(str)adSess[j].id);}
-  if (type=="bn") {netSd("bnA",{n:pAc},(str)adSess[j].id);}
-  if (type=="mt") {netSd("mtA",{n:pAc},(str)adSess[j].id);}
-  if (type=="ta") {netSd("taA",{n:pAc},(str)adSess[j].id);}
-  if (type=="tr") {netSd("trA",{n:pAc},(str)adSess[j].id);}
- }
-}
-
-action syncPlrRm(str id) {
- for (num i=lengthOf plrLsID-1;i>=0;i--) {
-  if (plrLsID[i]==id) {
-   str pNm=plrLs[i];
-   remove plrLsID[i];remove plrLs[i];
-   for (num j=0;j<lengthOf adSess;j++) {netSd("plD",{n:pNm},(str)adSess[j].id);}
-   break;
-  }
- }
-}
 
 str[] banLs = str[
  "*xatrao*",
@@ -200,6 +175,7 @@ str[] mtLs = str[
  "luigiman",
  "DangerousNerd"
 ];
+
 # -ADMIN SYSTEM-
 # ban
 action procBan(str id) {
@@ -208,6 +184,18 @@ action procBan(str id) {
  for (num i = 0; i < lengthOf banLs; i++) {if (banLs[i] == (str)p.accountName) {GAME.ADMIN.ban(id);}}
 }
 # ban
+
+# mute
+action procMtd(obj p) {
+ for (num i = 0; i < lengthOf mtLs; i++) {
+  if ((str)p.accountName == mtLs[i] || (str)p.username == mtLs[i]) {
+   netSd("mtM",{b:true},(str)p.id);
+   return;
+  }
+ }
+ netSd("mtM",{b:false},(str)p.id);
+}
+# mute
 
 # authentication
 num action hashChar(str ch) {
@@ -276,6 +264,7 @@ bool action verSessId(str sdr, str sID) {
  return false;
 }
 
+
 action invalidAdReq(str sdr, str acc) {rmAdSess(sdr);logR("nVER","INVALID REQUEST sent by "+acc,r);}
 
 bool action verAd(str sdr, str sId) {
@@ -324,7 +313,6 @@ bool action allowReq(str id) {
     rlRec[i].log=false;
     return true;
    }
-
    (num)rlRec[i].ct+=1;
 
    if ((num)rlRec[i].ct>5) {
@@ -353,17 +341,18 @@ action rlTime(num delta) {
 num action validAdPkt(str id, obj data, obj p) {
  if ((str)data.sI == "") {return 0;}
 
- str[] btn = str["bPl","bBn","bMt"];
+
  if (inList(btn,id)) {return 1;}
 
  if ((str)data.tU == "" && (str)data.w == "") {return 0;}
- str[] act=str["kc","bn","mt","rv","gt","bm","1h","1t","ta","tr","aW", "rM", "rB"];
+
  if (inList(act,id)) {return 2;}
+
+ if (inList(rmAct,id)) {return 3;}
  logR("WRNG",(str)p.accountName+" sent invalid network request: "+id,wrng);
  return 0;
 }
 # network security
-
 # data request
 str[] dtRq = str[];
 
@@ -377,54 +366,105 @@ bool action dtReqUsed(str pId,str type) {
 action procDtReq(str id,obj data,str pId) {
  str sId=(str)data.sI;
  if (!verAd(pId,sId)) {return;}
- str type="";str res="";
+ str type="";str resId="";
 
- if (id=="bPl") {type="pl";res="plL";}
- if (id=="bMt") {type="mt";res="mtL";}
- if (id=="bBn") {type="bn";res="bnL";}
- if (id=="bAd") {type="ad";res="adL";}
- if (id=="bVp") {type="vp";res="vpL";}
+ if (id=="bPl") {type="pl";resId="plL";}
+ if (id=="bMt") {type="mt";resId="mtL";}
+ if (id=="bBn") {type="bn";resId="bnL";}
+ if (id=="bTAd") {type="tAd";resId="tAdL";}
+ if (id=="bTRo") {type="tRo";resId="tRoL";}
 
  if (type=="") {return;}
- if (dtReqUsed(pId,type)) {netSd(res,{d:""},pId);return;}
+ if (dtReqUsed(pId,type)) {netSd(resId,{d:""},pId);return;}
 
  obj s=fnByID(pId);
  if (!notEmpty s) {return;}
- if (type=="pl") {netSd("plL", {d: plrLs}, pId);}
- if (type=="mt") {netSd("mtL", {d: mtLs}, pId);	}
- if (type=="bn") {netSd("bnL", {d: banLs}, pId);}
+ if (type=="pl") {netSd(resId, {d: plrLs}, pId);}
+ if (type=="mt") {netSd(resId, {d: mtLs}, pId);	}
+ if (type=="bn") {netSd(resId, {d: banLs}, pId);}
+ if (type=="tAd") {netSd(resId, {d: tmpAd}, pId);}
+ if (type=="tRo") {netSd(resId, {d: tmpRo}, pId);}
  logR("REQ",(str)s.accountName+" req "+id+" data",info);
 }
+action rmDtRq(str pId) {for (num i=lengthOf dtRq-1;i>=0;i--) {if (UTILS.truncateTxt(dtRq[i],0,true,lengthOf pId)==pId) {remove dtRq[i];}}}
+# data request
 
-action rmDtRq(str pId) {
- for (num i=lengthOf dtRq-1;i>=0;i--) {
-  if (UTILS.truncateTxt(dtRq[i],0,true,lengthOf pId)==pId) {
-   remove dtRq[i];
+# sync
+action syncPlrLs(str type,str id) {
+ obj p=fnByID(id);
+ if (!notEmpty p) {return;}
+ str pId=(str)p.id;str pAc=(str)p.accountName;
+ if (pAc=="") {pAc=(str)p.username;}
+ if (type=="pl") {
+  for (num i=0;i<lengthOf plrLsID;i++) {if (plrLsID[i]==pId) {return;}}
+  addTo plrLs pAc;addTo plrLsID pId;
+ }
+
+ for (num j=0;j<lengthOf adSess;j++) {
+  if (type=="pl") {netSd("plA",{n:pAc},(str)adSess[j].id);}
+  if (type=="bn") {netSd("bnA",{n:pAc},(str)adSess[j].id);}
+  if (type=="mt") {netSd("mtA",{n:pAc},(str)adSess[j].id);}
+  if (type=="ta") {netSd("taA",{n:pAc},(str)adSess[j].id);}
+  if (type=="tr") {netSd("trA",{n:pAc},(str)adSess[j].id);}
+ }
+}
+
+action syncPlrRm(str id) {
+ for (num i=lengthOf plrLsID-1;i>=0;i--) {
+  if (plrLsID[i]==id) {
+   str pNm=plrLs[i];
+   remove plrLsID[i];remove plrLs[i];
+   for (num j=0;j<lengthOf adSess;j++) {netSd("plD",{n:pNm},(str)adSess[j].id);}
+   break;
   }
  }
 }
-# data request
+str action getPlrNm(str nM) {
+ obj[] plrs=allPlr();
+ for (num i=0;i<lengthOf plrs;i++) {
+  if ((str)plrs[i].accountName==nM || (str)plrs[i].username==nM) {
+   return (str)plrs[i].id;
+  }
+ }
+ return "";
+}
+action syncRmPlrLs(str id,str nM) {
+ for (num j = 0; j < lengthOf adSess; j++) {netSd(id,{n:nM},(str)adSess[j].id);}
+  str pId = getPlrNm(nM); if (pId == "") {return;}
+  if (id == "rM") {netSd("mtM",{b:false},pId);return;}
+  if (id == "rTA" || id == "rTR") {rmRL(pId);rmAdSess(pId);netSd("clP", {}, pId);}
+}
+# sync
 
 # action security
+action rmPlrFromLs(str id,obj data,str pID) {
+ str sId = (str)data.sI; # admin's sess id
+ str sdr = pID; # sender's id
+ if (!verAd(sdr, sId)) {return;}
+ str tNm = (str)data.tU;
+
+ obj a = fnByID(pID);
+ if (!notEmpty a) {return;}
+ str aAcc = (str)a.accountName;
+ if (id == "rM") {rmFrStrLs(mtLs, tNm);syncRmPlrLs(id, tNm);}
+ if (id == "rB") {rmFrStrLs(banLs, tNm);syncRmPlrLs(id, tNm);}
+ if (id == "rTA") {if (!isRoot(aAcc)) {return;}rmFrStrLs(tmpAd,tNm);syncRmPlrLs(id,tNm);}
+ if (id == "rTR") {if (!isRoot(aAcc)) {return;}rmFrStrLs(tmpRo,tNm);syncRmPlrLs(id,tNm);}
+ str lbl = fnLbl(rmAct, id, btnLbls);
+ logR("ACT",aAcc+" REMOVED "+tNm+" from "+lbl+" list",info);
+ return;
+}
 
 action adTpPlr(str id,obj a,obj t,str aAcc,str tAcc) {
- if (id == "gt") {
-  a.position.x = t.position.x;
-  a.position.y = t.position.y;
-  a.position.z = t.position.z;
- }
- else {
-  t.position.x = a.position.x;
-  t.position.y = a.position.y;
-  t.position.z = a.position.z; 
- }
+ if (id == "gt") {a.position.x = t.position.x;a.position.y = t.position.y;a.position.z = t.position.z;}
+ if (id == "bm") {t.position.x = a.position.x;t.position.y = a.position.y;t.position.z = a.position.z; }
  logR("ACT",aAcc+" granted "+(id == "gt" ? "GO TO " : "BRING ME ")+tAcc,info);
 }
 
-action grantTmpRole(str role, str sAcc, str tAcc, str trg) {
+action grantTmpRole(str role, str sAcc, str tAcc, str tID) {
  if (isAuthorized(tAcc)) {logR("ACT",tAcc+" is already an Admin",info);return;}
- if (!inStrLs(role == "ta" ? tmpAd : tmpRo,tAcc)) {addTo (role == "ta" ? tmpAd : tmpRo) tAcc;}
- admAuth(trg);
+ if (!inStrLs(role == "ta" ? tmpAd : tmpRo,tAcc)) {addTo (role == "ta" ? tmpAd : tmpRo) tAcc;syncPlrLs(role, tID);}
+ admAuth(tID);
  logR("ACT",sAcc+" granted "+(role == "ta" ? "TMP ADMIN" : "TMP ROOT")+" to "+tAcc,info);
 }
 action setPlrTeam(obj t) {
@@ -455,18 +495,18 @@ action procAdAct(str id, obj data, str pID) {
 
  str tUsr = (str)data.tU;
  str tID = ""; # target's id
- str pAcc = "";
  obj[] plr = allPlr();
  for (num i = 0; i < lengthOf plr; i++) {
-  pAcc = (str)plr[i].accountName;
-  if (pAcc == "") {pAcc = (str)plr[i].username;}
-  if (pAcc == tUsr) {
+  str pAcc = (str)plr[i].accountName;
+  str pUNm = (str)plr[i].username;
+  if (pAcc == "") {pAcc = pUNm;}
+  if (pAcc == "" || pAcc == tUsr || pUNm == tUsr) {
    tID = (str)plr[i].id;
    break;
   }
  }
  if (tID == "") {return;}
- 
+
  obj a = fnByID(pID);obj t = fnByID(tID);
  if (!notEmpty a || !notEmpty t) {return;}
  str aAcc = (str)a.accountName;str tAcc = (str)t.accountName;
@@ -478,19 +518,11 @@ action procAdAct(str id, obj data, str pID) {
  if (id == "1h") {(num)t.score += 100;logR("ACT",aAcc+" req +100pts for "+tAcc,info);return;}
  if (id == "1t") {(num)t.score += 1000;logR("ACT",aAcc+" req +1000pts for "+tAcc,info);return;}
  if (id == "ta"||id == "tr") {grantTmpRole(id,aAcc,tAcc,tID);return;}
- if (id == "rM") {GAME.log("WORKING");return;} #logR("ACT",aAcc+" REMOVED "+tAcc+" from AUTO "+(id == "rM" ? "MUTE" : "BAN"),info);
- if (id == "rN") {GAME.log("WORKING");return;} #logR("ACT",aAcc+" REMOVED "+tAcc+" from AUTO "+(id == "rM" ? "MUTE" : "BAN"),info);
+ if (id == "mt") {if(!inStrLs(mtLs, tAcc)){addTo mtLs tAcc; syncPlrLs(id, tID); netSd("mtM",{b:true},tID);}}
  if (!procActPerm(aAcc,id,tAcc)) {return;}
  str lc = ""; str act = "";
- if (id == "kc") {
-  GAME.ADMIN.kick(tID);lc="#a83841";act="kicked";
- }
- if (id == "bn") {
-  addTo banLs tAcc; syncPlrLs(id, tID); GAME.ADMIN.ban(tID);lc="#991d24";act="banned";
- }
- if (id == "mt") {
-  addTo mtLs tAcc; syncPlrLs(id, tID);
- }
+ if (id == "kc") {GAME.ADMIN.kick(tID);lc="#a83841";act="kicked";}
+ if (id == "bn") {addTo banLs tAcc; syncPlrLs(id, tID); GAME.ADMIN.ban(tID);lc="#991d24";act="banned";}
  logR("INFO",aAcc+" GRANTED "+id+" on "+tAcc,info);
 }
 # action security
@@ -519,6 +551,7 @@ public action onPlayerSpawn(str id) {
  obj p = fnByID(id);
  if (!notEmpty p) {return;}
  # if (!isAdmin((str)p.accountName)) {GAME.ADMIN.ban(id);}
+ procMtd(p);
  syncPlrLs("pl",id);
  admAuth(id);
  procBan(id);
@@ -565,6 +598,7 @@ public action onNetworkMessage(str id, obj data, str pID) {
  logR("NET",(str)p.accountName+" sent REQ to server: "+id,"");
  if (vld == 1 && (str)data.r == "rq") {procDtReq(id, data, pID);}
  if (vld == 2) {procAdAct(id, data, pID);}
+ if (vld == 3) {rmPlrFromLs(id, data, pID);}
 }
 
 # Server receives chat message

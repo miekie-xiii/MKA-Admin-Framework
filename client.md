@@ -10,7 +10,8 @@ str[] bnLs = str[];
 str[] mtLs = str[];
 str[] vipLs = str[];
 str[] plrLs = str[];
-str[] adminLs = str[];
+str[] tmpAd = str[];
+str[] tmpRo = str[];
 
 bool adminPanelOpen = false;
 str bg = "background:rgba(0,0,0,0.5);";
@@ -68,6 +69,39 @@ str selBrd = "3px solid rgba(255,255,255,1)";
 str lnHght = "line-height:42px;";
 str[] toolBg = str["rgba(168,56,65,1)","rgba(153,29,36,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(20,144,170,1)","rgba(20,144,170,1)"];
 str bgBtn = "rgba(17,19,42,1)";
+num adRytFlash = 0;
+num adWepFlash = 0;
+
+bool useHdCht = true;
+bool chtRvl = false;
+str chtDisp = "none";
+bool isMuted = true;
+
+action strtcht() {
+ if (useHdCht) {
+  GAME.UI.updateDIV("chatUI","display","none");
+  chtDisp = "none";
+ } else {
+  chtRvl = true;
+  chtDisp = "block";
+  GAME.UI.updateDIV("chatUI","display","block");
+ }
+}
+
+action rndrcht() {
+ if (isMuted) {
+  if (chtDisp != "none") {
+   GAME.UI.updateDIV("chatUI","display","none");
+   chtDisp = "none";
+  }
+ } else {
+  if (chtRvl && chtDisp != "block") {
+   GAME.UI.updateDIV("chatUI","display","block");
+   chtDisp = "block";
+  }
+ }
+}
+
 # global/shared
 action netSd(str id, obj d) {GAME.NETWORK.send(id, d);}
 action updDIV(str id, str prop, str v){GAME.UI.updateDIV(id, prop, v);}
@@ -75,7 +109,7 @@ action updDIVTxt(str id, str txt){GAME.UI.updateDIVText(id, txt);}
 action crtDIV(str id, bool vis, str css, str parentId){GAME.UI.addDIV(id, vis, css, parentId);}
 action assgSess(obj data) {k = (str)data.k; r = (str)data.r;}
 action logS(obj data) {GAME.log((str)data.m);}
-
+action rmFrStrLs(str[] arr, str acc) {for(num i = 0; i < lengthOf arr; i++) {if (arr[i] == acc) {remove arr[i];return;}}}
 # global/shared
 
 
@@ -121,7 +155,8 @@ action selAdRyt(str id,str act,str lbl) {
   updDIV(adSelRyt,"border",norBrd);
 
   if (adSelRyt == "mkAdRytBan") {updDIVTxt(adSelRyt,"BAN");}
-  if (adSelRyt == "mkAdRytMuteAction" || adSelRyt == "mkAdRytBanAction") {updDIVTxt(adSelRyt,"REMOVE");}
+  if (adSelRyt == "mkAdRytMuteAction" ||adSelRyt == "mkAdRytBanAction" ||adSelRyt == "mkAdRytTAdAction" ||adSelRyt == "mkAdRytTRoAction") {updDIVTxt(adSelRyt,"REMOVE");
+ }
  }
 
  if (adSelWep != "") {
@@ -146,6 +181,7 @@ action selAdRyt(str id,str act,str lbl) {
  updDIV(id,"border",adSelRytBrd);
  adSelRyt = id;
  netSd(act,{sI:k,tU:adSelPlr});
+ adRytFlash = GAME.TIME.now() + 250;
 }
 
 action procAdRytAct(str id) {
@@ -162,6 +198,8 @@ action procAdRytAct(str id) {
 
  if (id == "mkAdRytMuteAction") {selAdRyt(id,"rM","REMOVE");return;}
  if (id == "mkAdRytBanAction") {selAdRyt(id,"rB","REMOVE");return;}
+ if (id == "mkAdRytTAdAction") {selAdRyt(id,"rTA","REMOVE");return;}
+ if (id == "mkAdRytTRoAction") {selAdRyt(id,"rTR","REMOVE");return;}
 }
 
 action selAdWep(str id, str name) {
@@ -170,6 +208,7 @@ action selAdWep(str id, str name) {
  updDIV(id,"border","3px solid rgba(255,255,255,1)");
  adSelWep = id;
  netSd("aW", {sI:k,tU:adSelPlr,w:name});
+ adWepFlash = GAME.TIME.now() + 250;
 }
 
 action procAdWep(str id) {
@@ -268,22 +307,13 @@ crtAdRytWep("SPECIAL",special,170,850);
 }
 
 
-action adMtAct() {
- crtDIV("mkAdRytMuteAction",true,
+action adRytRmAct(str id) {
+ crtDIV(id,true,
   "position:absolute;left:95px;top:170px;width:130px;height:40px;box-sizing:border-box;"+bg2+brd+brdRad+fnC+fnS2+txAlgCen+lnHght+"cursor:pointer;pointer-events:auto;",
   "mkAdRytBox"
  );
 
- updDIVTxt("mkAdRytMuteAction","REMOVE");
-}
-
-action adBnAct() {
- crtDIV("mkAdRytBanAction",true,
-  "position:absolute;left:95px;top:170px;width:130px;height:40px;box-sizing:border-box;"+bg2+brd+brdRad+fnC+fnS2+txAlgCen+lnHght+"cursor:pointer;pointer-events:auto;",
-  "mkAdRytBox"
- );
-
- updDIVTxt("mkAdRytBanAction","REMOVE");
+ updDIVTxt(id,"REMOVE");
 }
 
 action updAdRytPlr(str pNm, str prefix) {
@@ -309,8 +339,10 @@ action updAdRytPlr(str pNm, str prefix) {
  updDIVTxt("mkAdRytName",pNm);
  
  if (prefix == "pl") {adActNTools();}
- if (prefix == "mt") {adMtAct();}
- if (prefix == "bn") {adBnAct();}
+ if (prefix == "mt") {adRytRmAct("mkAdRytMuteAction");}
+ if (prefix == "bn") {adRytRmAct("mkAdRytBanAction");}
+ if (prefix == "tAd") {adRytRmAct("mkAdRytTAdAction");}
+ if (prefix == "tRo") {adRytRmAct("mkAdRytTRoAction");}
 }
 
 # right panel
@@ -433,6 +465,8 @@ action procDtRec(str id,obj data) {
  if (id=="plL") {ls=plrLs;prefix="pl";}
  else if (id=="mtL") {ls=mtLs;prefix="mt";}
  else if (id=="bnL") {ls=bnLs;prefix="bn";}
+ else if (id=="tAdL") {ls=tmpAd;prefix="tAd";}
+ else if (id=="tRoL") {ls=tmpRo;prefix="tRo";}
  else {return;}
 
  if ((str)data.d!="") {
@@ -441,15 +475,25 @@ action procDtRec(str id,obj data) {
   if (id=="plL") {plrLs=ls;}
   if (id=="mtL") {mtLs=ls;}
   if (id=="bnL") {bnLs=ls;}
+  if (id=="tAdL") {tmpAd=ls;}
+  if (id=="tRoL") {tmpRo=ls;}
  }
  updAdList(ls,prefix);
 }
 
 action procPlrUpd(str id, obj data) {
  str pNm = (str)data.n;
+
+ if (id == "rM") {rmFrStrLs(mtLs,(str)data.n);updAdList(mtLs,"mt");return;}
+ if (id == "rB") {rmFrStrLs(bnLs,(str)data.n);updAdList(bnLs,"bn");return;}
+ if (id == "rTA") {rmFrStrLs(tmpAd,(str)data.n);updAdList(tmpAd,"tAd");return;}
+ if (id == "rTR") {rmFrStrLs(tmpRo,(str)data.n);updAdList(tmpRo,"tRo");return;}
+
  if (id == "plA") {addTo plrLs pNm;}
- if (id == "bnA") {addTo mtLs pNm;}
- if (id == "mtA") {addTo bnLs pNm;}
+ if (id == "bnA") {addTo bnLs pNm;}
+ if (id == "mtA") {addTo mtLs pNm;}
+ if (id == "taA") {addTo tmpAd pNm;}
+ if (id == "trA") {addTo tmpRo pNm;}
  if (id == "plD") {
   for (num i = lengthOf plrLs - 1; i >= 0; i--) {
    if (plrLs[i] == pNm) {remove plrLs[i];break;}
@@ -534,10 +578,28 @@ action toggAdPan() {
 }
 #base
 
+action procAd() {
+ clsAdPnl();
+ k = "";
+ r = "";
+ adminButtonIDs = str[];
+ adminButtonLabels = str[];
+ toolIDs = str[];
+ toolLabels = str[];
+ lmgs = str[];
+ smgs = str[];
+ rifles = str[];
+ launchers = str[];
+ pistols = str[];
+ shotguns = str[];
+ special = str[];
+ tools = str[];
+}
 # -ADMIN SYSTEM-
 
 # Runs when the game starts
 public action start() {
+strtcht();
 crtAdmPnl();
 crtAdList();
 crtAdRyt();
@@ -545,12 +607,13 @@ crtAdRyt();
 
 # Runs every game tick
 public action update(num delta) {
-
+ if (adRytFlash > 0 && GAME.TIME.now() >= adRytFlash) {if (adSelRyt != "") {updDIV(adSelRyt,"border",norBrd);adSelRyt = "";}adRytFlash = 0;}
+ if (adWepFlash > 0 && GAME.TIME.now() >= adWepFlash) {if (adSelWep != "") {updDIV(adSelWep,"border",norBrd);adSelWep = "";}adWepFlash = 0;}
 }
 
 # Add rendering logic in here
 public action render(num delta) {
-
+rndrcht();
 }
 
 # Player spawns in
@@ -621,12 +684,14 @@ if (id == "mkAdRytAvatar" || id == "mkAdRytName") {GAME.UTILS.copyToClipboard(ad
 if (procAdListAct(id,plrLs,"pl")) {return;}
 if (procAdListAct(id,mtLs,"mt")) {return;}
 if (procAdListAct(id,bnLs,"bn")) {return;}
+if (procAdListAct(id,tmpAd,"tAd")) {return;}
+if (procAdListAct(id,tmpRo,"tRo")) {return;}
 
 if (id == "mkAdBtnPlrs") {selAdBtn(id);adSelLst="pl";adSelPlr="";clrAdRyt();netSd("bPl",{sI:k,r:"rq"});return;}
 if (id == "mkAdBtnMt") {selAdBtn(id);adSelLst="mt";adSelPlr="";clrAdRyt();netSd("bMt",{sI:k,r:"rq"});return;}
 if (id == "mkAdBtnBn") {selAdBtn(id);adSelLst="bn";adSelPlr="";clrAdRyt();netSd("bBn",{sI:k,r:"rq"});return;}
-#if (id == "mkAdBtnVp") {selAdBtn(id);netSd("bPl", {sI:k,r: "rq"});return;}
-#if (id == "mkAdBtnAd") {selAdBtn(id);netSd("bPl", {sI:k,r: "rq"});return;}
+if (id == "mkAdBtnTAd") {selAdBtn(id);adSelLst="tAd";adSelPlr="";clrAdRyt();netSd("bTAd",{sI:k,r:"rq"});return;}
+if (id == "mkAdBtnTRo") {selAdBtn(id);adSelLst="tRo";adSelPlr="";clrAdRyt();netSd("bTRo",{sI:k,r:"rq"});return;}
 #if (id == "mkAdBtnCon") {selAdBtn(id);netSd("bPl", {sI:k,r: "rq"});return;}
 #if (id == "mkAdBtnOth") {selAdBtn(id);netSd("bPl", {sI:k,r: "rq"});return;}
 
@@ -637,10 +702,15 @@ procAdWep(id);
 
 # Client receives network message
 public action onNetworkMessage(str id, obj data) {
+ if (id == "clP") {procAd();}
  if (id == "sID") {assgSess(data);}
  if (id=="aUI") {assgAdUI(data);}
  if (id == "lS") {logS(data);}
  if (id == "plA" || id == "plD") {procPlrUpd(id,data);return;}
  if (id == "bnA"|| id == "mtA") {procPlrUpd(id,data);return;}
+ if (id == "rM" || id == "rB") {procPlrUpd(id,data);return;}
+ if (id == "rTA" || id == "rTR") {procPlrUpd(id,data);return;}	
+ if (id == "taA"|| id == "trA") {procPlrUpd(id,data);return;}
+ if (id == "mtM") {isMuted = (bool)data.b;chtRvl = !isMuted;return;}
  procDtRec(id, data);
 }
