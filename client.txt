@@ -3,13 +3,13 @@
 # 
 # Add custom actions here
 
-# -ADMIN SYSTEM-
+# -MKS ARCHITECTURE FRAMEWORK-
 str k="";str r="";
 str[] bnLs=str[];str[] mtLs=str[];str[] vipLs=str[];str[] plrLs=str[];str[] tmpAd=str[];str[] tmpRo=str[];
 
 bool adminPanelOpen=false;
-str bg="background:rgba(0,0,0,0.5);";
-str bg1="background:rgba(35,35,35,0.5);";
+str bg="background:rgba(0,0,0,0.9);";
+str bg1="background:rgba(0,0,0,0.7);";
 str bg2="background:rgba(153,29,36,1);";
 str fnS="font-size:28px;";
 str fnS1="font-size:15px;";
@@ -20,9 +20,14 @@ str fnC1="color:#000000;";
 str fnC2="color:#FF0000;";
 str fnPlr="font-size:15px;font-weight:400;";
 
-str brd="border:1px solid rgba(255,255,255,0.75);";
+str brd="border:2px solid rgba(255,255,255,1);";
 str brdRad="border-radius:10px;";
 str brdRad1="border-radius:20px;";
+str btnBg="rgba(55,55,55,7)";
+str selBg="rgba(100,100,100,1)";
+str norBrd="2px solid rgba(255,255,255,7)";
+str selBrd="3px solid rgba(255,255,255,1)";
+
 str txC="#ffffff;";
 str ff="font-weight:800;";
 str cr="border-radius:10px;";
@@ -33,9 +38,9 @@ str ps="position:absolute;";
 str txAlgCen="text-align:center;";
 str st=ps+bx+ov;
 
-str adSelRowBg="rgba(55,55,55,1)";
+str adSelRowBg="rgba(100,100,100,1)";
 str adSelRowBrd="2px solid rgba(255,255,255,1)";
-str adNorRowBg="rgba(0,0,0,0.5)";
+str adNorRowBg="rgba(50,50,50,0.7)";
 str adNorRowBrd="1px solid rgba(255,255,255,0.75)";
 str adSelPlr="";
 
@@ -43,11 +48,6 @@ str adSelBtn="";str adSelLst="";
 
 str[] adminButtonIDs=str[];str[] adminButtonLabels=str[];
 str[] toolIDs=str[];str[] toolLabels=str[];str[] lmgs=str[];str[] smgs=str[];str[] rifles=str[];str[] launchers=str[];str[] pistols=str[];str[] shotguns=str[];str[] special=str[];str[] tools=str[];
-
-str btnBg="rgba(55,55,55,0.5)";
-str selBg="rgba(75,75,75,1)";
-str norBrd="1px solid rgba(255,255,255,0.5)";
-str selBrd="3px solid rgba(255,255,255,1)";
 
 str lnHght="line-height:42px;";
 str[] toolBg=str["rgba(168,56,65,1)","rgba(153,29,36,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(54,54,54,1)","rgba(20,144,170,1)","rgba(20,144,170,1)"];
@@ -110,6 +110,7 @@ action selAdBtn(str id) {
 # right panel
 str adSelRyt="";
 str adSelRytBrd="3px solid rgba(255,255,255,1)";
+str adNorWepBrd="border:2px solid rgba(255,255,255,0.7);";
 str[] wepBtnIDs=str[];
 str[] wepNm=str[];
 str adSelWep="";
@@ -142,7 +143,7 @@ action procAdRytAct(str id) {
  if(id=="mkAdRytRevive"){selAdRyt(id,"rv","REVIVE");return;}
  if(id=="mkAdRytGoTo"){selAdRyt(id,"gt","GO TO");return;}
  if(id=="mkAdRytBring"){selAdRyt(id,"bm","BRING ME");return;}
- if(id=="mkAdRytPts100"){selAdRyt(id,"1h","+100pts");return;}
+ if(id=="mkAdRytPts500"){selAdRyt(id,"5h","+100pts");return;}
  if(id=="mkAdRytPts1000"){selAdRyt(id,"1t","+1000pts");return;}
  if(id=="mkAdRytTempAd"){selAdRyt(id,"ta","TEMP ADMIN");return;}
  if(id=="mkAdRytTempRo"){selAdRyt(id,"tr","TEMP ROOT");return;}
@@ -172,7 +173,7 @@ action clrAdRyt() {
 
 action crtAdRyt() {crtDIV("mkAdRytBox",true,"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;","mkAdRyt");}
 
-action crtAdRytBtn(str id,str label,num left,num top,str bg,str fn) {crtDIV(id,true,"position:absolute;left:"+toStr(left)+"px;top:"+toStr(top)+"px;width:130px;height:40px;box-sizing:border-box;background:"+bg+";"+brd+brdRad+fnC+fn+txAlgCen+lnHght+"cursor:pointer;pointer-events:auto;","mkAdRytTools");updDIVTxt(id,label);}
+action crtAdRytBtn(str id,str label,num left,num top,str bg,str fn) {crtDIV(id,true,"position:absolute;left:"+toStr(left)+"px;top:"+toStr(top)+"px;width:130px;height:40px;box-sizing:border-box;background:"+bg+";"+adNorWepBrd+brdRad+fnC+fn+txAlgCen+lnHght+"cursor:pointer;pointer-events:auto;","mkAdRytTools");updDIVTxt(id,label);}
 
 action crtAdRytWep(str title,str[] weapons,num left,num top) {
  crtDIV("mkAdRyt"+title+"Title",true,"position:absolute;left:"+toStr(left)+"px;top:"+toStr(top)+"px;width:130px;height:20px;box-sizing:border-box;"+fnC+fnS3+ff+"line-height:20px;pointer-events:none;","mkAdRytTools");
@@ -292,25 +293,28 @@ action updAdList(str[] data,str prefix) {
 bool action procAdListAct(str id,str[] data,str prefix) {
  for(num i=0;i<lengthOf data;i++) {
   if(id=="mkAdAction_"+prefix+"_"+toStr(i)) {
-   if(adSelPlr!="") {
-    for(num j=0;j<lengthOf data;j++) {
-     if(data[j]==adSelPlr) {updDIV("mkAdRow_"+prefix+"_"+toStr(j),"border",adNorRowBrd);updDIV("mkAdRow_"+prefix+"_"+toStr(j),"background",adNorRowBg);updDIV("mkAdAction_"+prefix+"_"+toStr(j),"background","rgba(190,190,190,1)");break;
-     }
-    }
+
+   # Clear every row in this list
+   for(num j=0;j<lengthOf data;j++) {
+    updDIV("mkAdRow_"+prefix+"_"+toStr(j),"border",adNorRowBrd);
+    updDIV("mkAdRow_"+prefix+"_"+toStr(j),"background",adNorRowBg);
+    updDIV("mkAdAction_"+prefix+"_"+toStr(j),"background","rgba(190,190,190,1)");
    }
 
-   clrAdRytSel();
-
+   # Select clicked row
    adSelPlr=data[i];
 
    updDIV("mkAdRow_"+prefix+"_"+toStr(i),"border",adSelRowBrd);
    updDIV("mkAdRow_"+prefix+"_"+toStr(i),"background",adSelRowBg);
    updDIV("mkAdAction_"+prefix+"_"+toStr(i),"background","rgba(255,255,255,1)");
 
+   clrAdRytSel();
    updAdRytPlr(adSelPlr,prefix);
+
    return true;
   }
  }
+
  return false;
 }
 # center panel
@@ -397,7 +401,6 @@ action toggAdPan() {
  }
 }
 #base
-# -ADMIN SYSTEM-
 
 # nuke limit system
 num myNukeCount=0;
@@ -405,8 +408,18 @@ bool showNukeHUD=false;
 num nkLmt=5;
 num nukeWarnUntil=0;
 action renderNukeCount() {
+obj size=GAME.OVERLAY.getSize();
 
- num panelX=430;num panelY=1059;num panelW=225;num panelH=95;
+num screenWidth=(num)size.width;
+num screenHeight=(num)size.height;
+
+num panelW=225;
+num panelH=95;
+num marginX=430;
+num marginY=17;
+
+num panelX=marginX;
+num panelY=screenHeight-marginY-panelH;
  bool limitReached=((num)myNukeCount>=nkLmt);
  str borderColor="#202020";
  if(limitReached){borderColor="#ff4444";}
@@ -451,13 +464,19 @@ action renderNukeLimitWarn() {
 
  obj sz=GAME.OVERLAY.getSize();
  num w=(num)sz.width;num h=(num)sz.height;
- num boxW=500;num boxH=120;num x=(w-boxW)/2;num y=((h-boxH)/2)+300;
- ovRect(x,y,boxW,boxH,0,"#4b3a3a",1);ovRect(x,y,boxW,3,0,"#ff4444",1);ovRect(x,y+boxH-3,boxW,3,0,"#ff4444",1);
- ovTxt("N U K E   L I M I T",w/2,y+45,0,30,"center","#ffffff",1);
- ovTxt("N U K E R   D I E S",w/2,y+90,0,30,"center","#ff4444",1);
+ num boxW=900;num boxH=120;
+ num x=(w-boxW)/2;num y=((h-boxH)/2)+300;
+ ovRect(x,y,boxW,boxH,0,"#4b3a3a",1);
+ # border
+ ovRect(x,y,boxW,3,0,"#ff4444",1);
+ ovRect(x,y+boxH-3,boxW,3,0,"#ff4444",1);
+ ovRect(x,y,3,boxH,0,"#ff4444",1);
+ ovRect(x+boxW-3,y,3,boxH,0,"#ff4444",1);
+
+ ovTxt("N U K E   L I M I T    "+toStr(nkLmt),w/2,y+45,0,30,"center","#ffffff",1);
+ ovTxt("N U K E R   D I E   I F   E X C E E D E D",w/2,y+94,0,30,"center","#ff4444",1);
 }
 # nuke limit system
-
 
 # log system
 bool logExpanded=false;
@@ -466,10 +485,10 @@ obj[] objLog=obj[];
 str[] logCat=str[];
 str[] logClr=str["#63FFDD","#FFFFFF","#ff4444","#5EFF94","#ABABAB","#FFA600","#D1D1D1","#FF0000","#FF6642","#BFFF4D","#A678FF","#FF0047","#fc03ec","#FF0000"];
 
-num lgMrH=22;num lgMP=5;num lgMR=4;num lgMF=12;
+num lgMrH=22;num lgMP=10;num lgMR=4;num lgMF=12;
 num lgErH=25;num lgEP=20;num lgEF=15;
-num lgMw=420;num lgMh=100;num lgEw=700;num lgEh=720;
-num lgML=10;num lgMB=450;
+num lgMw=420;num lgMh=110;num lgEw=700;num lgEh=720;
+num lgML=670;num lgMB=10;
 num lgRW=400;num lgEW=760;
 num lgCW=40;num lgCH=40;num lgCX=10;num lgCY=10;
 num lgCB=2;num lgCF=20;num lgCLH=36;
@@ -525,7 +544,6 @@ action updMiniLog() {
    else {updDIV(id,"display","none");}
  }
 }
-
 
 action updLogSize() {
  if (logExpanded) {
@@ -642,13 +660,16 @@ action assgAdUI(obj d) {adminButtonIDs=(str[])d.b;adminButtonLabels=(str[])d.c;t
  }
 }
 action procLog(obj d){
- logCat=(str[])d.lr;strLog=(str[])d.lh;
+ logCat=(str[])d.lr;strLog=(str[])d.lh;objLog=obj[];
  for(num i=0;i<lengthOf strLog;i++){parseLog(strLog[i]);}
  updMiniLogVis();
  updMiniLog();
 }
 action procAd() {clsAdPnl();k="";r="";updMiniLogVis();strLog=str[];objLog=obj[];logCat=str[];
 adminButtonIDs=str[];adminButtonLabels=str[];toolIDs=str[];toolLabels=str[];lmgs=str[];smgs=str[];rifles=str[];launchers=str[];pistols=str[];shotguns=str[];special=str[];tools=str[];}
+# -MKS ARCHITECTURE FRAMEWORK-
+
+
 # Runs when the game starts
 public action start() {
  strtcht();
