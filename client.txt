@@ -1,9 +1,8 @@
-# Client Script runs only on the client
-# KrunkScript Copyright (C) FRVR Limited
-# 
-# Add custom actions here
+# Client Script 
+# MKS AF 0.7.2
 
 # -MKS ARCHITECTURE FRAMEWORK-
+
 str k="";str r="";
 str[] bnLs=str[];str[] mtLs=str[];str[] vipLs=str[];str[] plrLs=str[];str[] tmpAd=str[];str[] tmpRo=str[];
 
@@ -333,7 +332,6 @@ action procDtRec(str id,obj data) {
 
  if((str)data.d!="") {
   ls=(str[])data.d;
-
   if(id=="plL"){plrLs=ls;}
   if(id=="mtL"){mtLs=ls;}
   if(id=="bnL"){bnLs=ls;}
@@ -676,11 +674,9 @@ public action start() {
  crtAdmPnl();
  crtAdList();
  crtAdRyt();
-
  crtLogBg();
  crtMiniLog();
  crtLogClose();
-
  logExpanded = false;
 }
 
