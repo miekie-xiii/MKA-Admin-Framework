@@ -408,18 +408,18 @@ bool showNukeHUD=false;
 num nkLmt=5;
 num nukeWarnUntil=0;
 action renderNukeCount() {
-obj size=GAME.OVERLAY.getSize();
+ obj size=GAME.OVERLAY.getSize();
 
-num screenWidth=(num)size.width;
-num screenHeight=(num)size.height;
+ num screenWidth=(num)size.width;
+ num screenHeight=(num)size.height;
 
-num panelW=225;
-num panelH=95;
-num marginX=430;
-num marginY=17;
+ num panelW=225;
+ num panelH=95;
+ num marginX=430;
+ num marginY=17;
 
-num panelX=marginX;
-num panelY=screenHeight-marginY-panelH;
+ num panelX=marginX;
+ num panelY=screenHeight-marginY-panelH;
  bool limitReached=((num)myNukeCount>=nkLmt);
  str borderColor="#202020";
  if(limitReached){borderColor="#ff4444";}
