@@ -569,15 +569,15 @@ action procAdAct(str id,obj data,str pID) {
  if(tAcc==""){bLs=false;tAcc=(str)t.username;}
  str act=retStr(actStr,id,toolLbls);
  str cat="ACT";
+ if(!procActPerm(aAcc,id,tAcc)){return;}
+ if(id=="ta"||id=="tr"){if(!isRoot(aAcc)){logR("DENY",aAcc+" :: "+act+" DENIED :: "+tAcc);return;}grantTmpRole(id,aAcc,tAcc,tID, pID);return;}
  if(id=="aW"){str w=(str)data.w;giveWep(t,aAcc,w,tAcc);cat="WEP";act+=" "+w;}
  if(id=="rv"){setPlrTeam(t);}
  if(id=="gt"||id=="bm"){adTpPlr(id,a,t,aAcc,tAcc);}
  if(id=="5h"){(num)t.score+=500;}
  if(id=="1t"){(num)t.score+=1000;}
- if(id=="ta"||id=="tr"){grantTmpRole(id,aAcc,tAcc,tID, pID);return;}
  if(id=="mt"){if(!inStrLs(mtLs,tAcc)){addTo mtLs tAcc;syncPlrLs(id,tID);netSd("mtM",{b:true},tID);}}
  if(id=="kc"||id=="bn") {
-  if(!procActPerm(aAcc,id,tAcc)){return;}
   if(id=="kc"){GAME.ADMIN.kick(tID);act+="ED";}
   if(id=="bn"){if(bLs){addTo banLs tAcc;}syncPlrLs(id,tID);GAME.ADMIN.ban(tID);act+="NED";}
  }
@@ -596,6 +596,7 @@ action procAdCon(str id,obj data,str pID) {
  if(!notEmpty a){return;}
 
  str aAcc=(str)a.accountName;
+ if(!isRoot(aAcc)){logR("DENY",aAcc+" :: CONTROLS DENIED :: Server");return;}
  str ui=(str)data.ui;
  str lbl=fnLbl(conIDs,ui,conLbls);
  if(inStrLs(dsCnNtIDs,id)){lbl="DISABLED "+lbl;}
@@ -619,29 +620,50 @@ action procAdCon(str id,obj data,str pID) {
 }
 # action security
 
-# nuke limit & revNuke & force respawn system
-obj[] plrNuke=obj[];
-num nkLmt=5;
-bool nukeAct=false;
-str[] currNkr=str[];
-str[] revNkr=str[];
-num rspwnChk=0;
-obj[] nukeKill=obj[];
-action recPlrNuke(str pId) {
- for(num i=0;i<lengthOf plrNuke;i++){if((str)plrNuke[i].pID==pId){(num)plrNuke[i].nk+=1;netSd("nkC",{c:(num)plrNuke[i].nk},pId);return;}}addTo plrNuke {pID:pId,nk:1};netSd("nkC",{c:1},pId);
+# anti rev-nuke system (by slanik)
+num INFECTED_TEAM=2;         # team not allowed to nuke
+num REVNUKE_KILL_DELAY=3000; # ms after detonation the jailed player dies
+num NUKE_MAX_MS=20000;       # safety cap if nukeEnd never fires
+str nukerID="";
+bool nukeActive=false;
+num nukeStartTime=0;
+bool revPunishing=false;
+str revPunishID="";
+num revKillAt=0;
+
+# teleport rev-nuker into the jail (rnX/rnY/rnZ) and mark for delayed kill
+action startRevPunish(obj nuker) {
+ nuker.position.x=rnX;nuker.position.y=rnY;nuker.position.z=rnZ;
+ revPunishing=true;
+ revPunishID=(str)nuker.id;
+ revKillAt=GAME.TIME.now()+25000; # fallback, overridden on nukeEnd
+ nukeActive=false;
+ nukerID="";
+ GAME.CHAT.broadcast((str)nuker.username+" tried to rev nuke but slanik was faster and caught him","#ff5555");
+ logR("SYS","SERVER :: REV-NUKE JAIL :: "+(str)nuker.username);
 }
-action tpNuker(obj n) {str pId=(str)n.id;if((num)n.team==2){if(!inStrLs(revNkr,pId)){addTo revNkr pId;}n.position.x=rnX;n.position.y=rnY;n.position.z=rnZ;}}
-action procNkr(str pId) {obj p=fnByID(pId);if(!inStrLs(currNkr,pId)){addTo currNkr pId;}tpNuker(p);}
-action frcRspwnDdPlrs() {obj[] plrs=GAME.PLAYERS.list();for(num i=0;i<lengthOf plrs;i++){obj p=plrs[i];str pId=(str)p.id;if(!(bool)p.active&&(!isAuthorized((str)p.accountName)||inStrLs(currNkr,pId))){p.respawn();}}}
-action procRevNkr(str pId,obj n){if(inStrLs(currNkr,pId)&&(num)n.team==2){tpNuker(n);}}
-action schedNK(str pId) {for(num i=0;i<lengthOf nukeKill;i++){if((str)nukeKill[i].pId==pId){return;}}addTo nukeKill {pId:pId,t:GAME.TIME.now()+3000};}
-action procNK() {for(num i=lengthOf nukeKill-1;i>=0;i--){if(GAME.TIME.now()>=(num)nukeKill[i].t){obj p=fnByID((str)nukeKill[i].pId);if(notEmpty p){(num)p.health-=100000;}remove nukeKill[i];}}}
-action procEndNuke(str pId,obj p) {
- if(inStrLs(revNkr,pId)){schedNK(pId);rmFrStrLs(revNkr, pId);}rmFrStrLs(currNkr,pId);
- for(num i=0;i<lengthOf plrNuke;i++){if((str)plrNuke[i].pID==pId&&(num)plrNuke[i].nk>nkLmt){schedNK(pId);GAME.CHAT.broadcast((str)p.accountName+" exceeded the nuke limit.","#ff4444");break;}}
- nukeAct=false;
+
+# watch the active nuker + kill the jailed nuker after the delay (called from update)
+action procRevWatch() {
+ if(nukeActive){
+  if(GAME.TIME.now()-nukeStartTime>NUKE_MAX_MS){nukeActive=false;nukerID="";}
+  else if(nukerID!=""){
+   obj nuker=fnByID(nukerID);
+   if(notEmpty nuker){
+    if(!(bool)nuker.active){nuker.respawn();}
+    else if((num)nuker.team==INFECTED_TEAM){startRevPunish(nuker);}
+   }
+  }
+ }
+ if(revPunishing){
+  if(GAME.TIME.now()>=revKillAt){
+   obj rn=fnByID(revPunishID);
+   if(notEmpty rn){(num)rn.health-=100000;}
+   revPunishing=false;revPunishID="";
+  }
+ }
 }
-# nuke limit & revNuke & force respawn system
+# anti rev-nuke system
 # -MKS ARCHITECTURE FRAMEWORK-
 
 # Runs when the game starts
@@ -650,9 +672,7 @@ public action start() {
 }
 # Runs every game tick
 public action update(num delta) {
- rspwnChk+=delta;
- if(rspwnChk>=250){rspwnChk=0;frcRspwnDdPlrs();}
- if(lengthOf nukeKill!=0){procNK();}
+ procRevWatch();
  endSvrCD(delta);
  rlTime(delta);
  if(lengthOf svPlrLoc!=0){
@@ -670,15 +690,26 @@ public action onPlayerSpawn(str id) {
  str tAcc=(str)p.accountName;if(tAcc==""){tAcc=(str)p.username;}
  if(gstLk||svrLk){if((str)p.accountName==""||svrLk){if(!isAuthorized((str)p.accountName)){logR("SYS","SERVER :: Kicked :: "+tAcc);GAME.ADMIN.kick(id);return;}}}
  # if(!isAdmin((str)p.accountName)){GAME.ADMIN.ban(id);}
- procMtd(p);syncPlrLs("pl",id);admAuth(id);procBan(id);if(nukeAct){procRevNkr(id,p);}
+ procMtd(p);syncPlrLs("pl",id);admAuth(id);procBan(id);
 }
 
 # Called from Custom Trigger Action
 public action onCustomTrigger(str pId,str customParam,num value) {
  obj p=fnByID(pId);
- if(!notEmpty p){return;} 
- if(customParam=="nukeStart"){nukeAct=true;recPlrNuke(pId);procNkr(pId);}
- if(customParam=="nukeEnd"){procEndNuke(pId,p);}
+ if(!notEmpty p){return;}
+ if(customParam=="nukeStart"){
+  if((num)p.team==INFECTED_TEAM){startRevPunish(p);}       # zombie hit the trigger -> instant jail
+  else{nukerID=pId;nukeStartTime=GAME.TIME.now();nukeActive=true;} # human nuke -> watch them
+ }
+ if(customParam=="nukeEnd"){
+  nukeActive=false;nukerID="";
+  if(revPunishing){revKillAt=GAME.TIME.now()+REVNUKE_KILL_DELAY;} # detonated -> schedule kill
+ }
+}
+
+# Force-respawn the nuker if they die mid-nuke (stops the death-screen rev-nuke)
+public action onPlayerDeath(str id,str killerID) {
+ if(nukeActive&&id==nukerID){obj np=fnByID(id);if(notEmpty np){np.respawn();}}
 }
 
 action plrVC(obj p) {str aAcc=(str)p.accountName;if(aAcc==""){aAcc=(str)p.username;}logR("VC",aAcc+" :: USING VOICE CHAT :: SERVER");}
@@ -708,6 +739,7 @@ public action onPlayerLeave(str pId) {
 # Runs when the round ends
 public action onGameEnd() {
  for(num i=0; i<lengthOf adSess;i++){netSd("clP",{},(str)adSess[i].id);}
- plrNuke=obj[];adSess=obj[];dtRq=str[];
+ nukeActive=false;revPunishing=false;nukerID="";revPunishID="";
+ adSess=obj[];dtRq=str[];
  while(lengthOf logHis>30){remove logHis[0];}
 }
