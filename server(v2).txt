@@ -1,6 +1,6 @@
-# Server Script runs only on Hosted server & not in test mode
-# KrunkScript Copyright (C) FRVR Limited
-# 
+# Client Script 
+# MKS AF 0.7.2
+
 # -MKS ARCHITECTURE FRAMEWORK-
 
 # TRIGGER LOCATIONS
@@ -98,14 +98,13 @@ str[] banLs=str[
 str[] mtLs=str[
  #"AshDarrings",
  "Drukhari",
- "HOLA_SOY_LOAN",
- "HOLA_SOY_LOAN2",
+ # "HOLA_SOY_LOAN",
+ # "HOLA_SOY_LOAN2",
  "KOOLKID91",
  "Modrivc",
  "topthereal",
  "wq1l",
  "ZaainKrunk",
- "Drukhari",
  "KOOLKID91",
  "FairsFR",
  "haui123",
